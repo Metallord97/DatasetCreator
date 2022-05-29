@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.List;
 
 public class StringUtils {
+    private StringUtils() {}
     public static String getExtension(String path) {
         int lastIndexOf = path.lastIndexOf(".");
         if(lastIndexOf == -1) {

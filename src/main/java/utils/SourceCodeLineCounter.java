@@ -25,6 +25,7 @@ import java.io.IOException;
  * End: print count
  */
 public class SourceCodeLineCounter {
+    private SourceCodeLineCounter() {}
     public static int getNumberOfLines(BufferedReader bReader)
             throws IOException {
         int count = 0;

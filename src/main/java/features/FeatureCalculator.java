@@ -14,12 +14,15 @@ import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.util.io.DisabledOutputStream;
 import utils.SourceCodeLineCounter;
+import utils.StringConstant;
 import utils.StringUtils;
 
 import java.io.*;
 import java.util.*;
 
 public class FeatureCalculator {
+
+    private FeatureCalculator() {}
 
     /**
      * Dato in input il repository, la lista delle release e il nome del progetto calcola il LOC per ogni classe raggruppando per chiave (projectName, release, className)
@@ -29,8 +32,8 @@ public class FeatureCalculator {
      * @throws IOException
      * @throws GitAPIException
      */
-    public static LinkedHashMap<CompositeKey, Integer> calculateSize(Git git, List<Ref> releases) throws GitAPIException, IOException {
-        LinkedHashMap<CompositeKey, Integer> feature = new LinkedHashMap<>();
+    public static Map<CompositeKey, Integer> calculateSize(Git git, List<Ref> releases) throws GitAPIException, IOException {
+        Map<CompositeKey, Integer> feature = new LinkedHashMap<>();
         /* Per ogni release prendo l'ultimo commit relativo a quella release.
         *  Poi eseguo una ricerca sull'albero cercando i file java
         *  Se li trovo calcolo il LOC di quel file e li aggiungo alla Mappa*/
@@ -48,7 +51,7 @@ public class FeatureCalculator {
                     while (treeWalk.next()) {
                         String path = treeWalk.getPathString();
                         if (FeatureCalculatorUtils.isPathValid(path)) {
-                            CompositeKey key = new CompositeKey(StringUtils.removeSubstring(releases.get(i).getName(), "refs/tags/"), path);
+                            CompositeKey key = new CompositeKey(StringUtils.removeSubstring(releases.get(i).getName(), StringConstant.SUBSTRING_TO_REMOVE), path);
                             ObjectId objectId = treeWalk.getObjectId(0);
                             ObjectLoader loader = git.getRepository().open(objectId);
                             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
@@ -66,8 +69,8 @@ public class FeatureCalculator {
         return feature;
     }
 
-    public static LinkedHashMap<CompositeKey, Integer> calculateLocTouched (Git git, List<Ref> release) throws IOException, GitAPIException {
-        LinkedHashMap<CompositeKey, Integer> feature = new LinkedHashMap<>();
+    public static Map<CompositeKey, Integer> calculateLocTouched (Git git, List<Ref> release) throws IOException, GitAPIException {
+        Map<CompositeKey, Integer> feature = new LinkedHashMap<>();
         Map<String, Integer> updatedLocTouched = new HashMap<>();
         /* Per ogni release itero su tutti i commit, per ogni commit prendo i file java che sono stati toccati dal quel commit
            per ogni file controllo quante righe sono state aggiunte e rimosse aggiornando sempre updatedLocTouched
@@ -111,7 +114,7 @@ public class FeatureCalculator {
                 String className = StringUtils.getFileName(element);
                 Integer locTouched = updatedLocTouched.get(className);
                 if(locTouched != null) {
-                    CompositeKey key = new CompositeKey(StringUtils.removeSubstring(release.get(i).getName(), "refs/tags/"), element);
+                    CompositeKey key = new CompositeKey(StringUtils.removeSubstring(release.get(i).getName(), StringConstant.SUBSTRING_TO_REMOVE), element);
                     feature.put(key, locTouched);
                 }
             }
@@ -121,8 +124,8 @@ public class FeatureCalculator {
         return feature;
     }
 
-    public static LinkedHashMap<CompositeKey, Integer> calculateNumberOfRevisions (Git git, List<Ref> release) throws IOException, GitAPIException {
-        LinkedHashMap<CompositeKey, Integer> feature = new LinkedHashMap<>();
+    public static Map<CompositeKey, Integer> calculateNumberOfRevisions (Git git, List<Ref> release) throws IOException, GitAPIException {
+        Map<CompositeKey, Integer> feature = new LinkedHashMap<>();
         Map<String, Integer> numberOfRevision = new HashMap<>();
 
         /*
@@ -143,7 +146,7 @@ public class FeatureCalculator {
                         String path = entry.getNewPath();
                         if(!FeatureCalculatorUtils.isPathValid(path)) continue;
                         String className = StringUtils.getFileName(path);
-                        /* Se revisionCounte non contiene già il file lo aggiungo per la prima volta */
+                        /* Se revisionCounter non contiene già il file lo aggiungo per la prima volta */
                         if(!numberOfRevision.containsKey(className)) {
                             numberOfRevision.put(className, 1);
                         }
@@ -157,10 +160,10 @@ public class FeatureCalculator {
             /* qui mi trovo a fine release */
             for (String element : classList) {
                 String className = StringUtils.getFileName(element);
-                Integer NR = numberOfRevision.get(className);
-                if(NR != null) {
-                    CompositeKey key = new CompositeKey(StringUtils.removeSubstring(release.get(i).getName(), "refs/tags/"), element);
-                    feature.put(key, NR);
+                Integer numberOfRevisions = numberOfRevision.get(className);
+                if(numberOfRevisions != null) {
+                    CompositeKey key = new CompositeKey(StringUtils.removeSubstring(release.get(i).getName(), StringConstant.SUBSTRING_TO_REMOVE), element);
+                    feature.put(key, numberOfRevisions);
                 }
             }
         }
@@ -168,9 +171,9 @@ public class FeatureCalculator {
         return feature;
     }
 
-    public static LinkedHashMap<CompositeKey, Integer> calculateNumberOfAuthors (Git git, List<Ref> releases) throws IOException, GitAPIException {
-        LinkedHashMap<CompositeKey, Integer> feature = new LinkedHashMap<>();
-        LinkedHashMap<String, List<String>> authorsMap = new LinkedHashMap<>();
+    public static Map<CompositeKey, Integer> calculateNumberOfAuthors (Git git, List<Ref> releases) throws IOException, GitAPIException {
+        Map<CompositeKey, Integer> feature = new LinkedHashMap<>();
+        Map<String, List<String>> authorsMap = new LinkedHashMap<>();
         /* Per ogni release prendo tutti i commit
         *  per ogni commit controllo chi ha fatto quel commit e quali file ha modificato
         *  creo una associazione nome_file->(lista di autori) e li conto a fine di ogni release */
@@ -212,7 +215,7 @@ public class FeatureCalculator {
                 String className = StringUtils.getFileName(element);
                 List<String> authors = authorsMap.get(className);
                 if (authors != null) {
-                    CompositeKey key = new CompositeKey(StringUtils.removeSubstring(releases.get(i).getName(), "refs/tags/"), element);
+                    CompositeKey key = new CompositeKey(StringUtils.removeSubstring(releases.get(i).getName(), StringConstant.SUBSTRING_TO_REMOVE), element);
                     feature.put(key, authors.size());
                 }
             }
@@ -221,8 +224,8 @@ public class FeatureCalculator {
         return feature;
     }
 
-    public static LinkedHashMap<CompositeKey, Integer> calculateLocAdded (Git git, List<Ref> releases) throws IOException, GitAPIException {
-        LinkedHashMap<CompositeKey, Integer> feature = new LinkedHashMap<>();
+    public static Map<CompositeKey, Integer> calculateLocAdded (Git git, List<Ref> releases) throws IOException, GitAPIException {
+        Map<CompositeKey, Integer> feature = new LinkedHashMap<>();
         Map<String, Integer> updatedLocAdded = new HashMap<>();
         /* Per ogni release itero su tutti i commit
         *  Per ogni commit mi prendo i file modificati
@@ -266,7 +269,7 @@ public class FeatureCalculator {
                 String className = StringUtils.getFileName(element);
                 Integer locTouched = updatedLocAdded.get(className);
                 if(locTouched != null) {
-                    CompositeKey key = new CompositeKey(StringUtils.removeSubstring(releases.get(i).getName(), "refs/tags/"), element);
+                    CompositeKey key = new CompositeKey(StringUtils.removeSubstring(releases.get(i).getName(), StringConstant.SUBSTRING_TO_REMOVE), element);
                     feature.put(key, locTouched);
                 }
             }
@@ -275,8 +278,8 @@ public class FeatureCalculator {
         return feature;
     }
 
-    public static LinkedHashMap<CompositeKey, Integer> calculateMaxLocAdded (Git git, List<Ref> releases) throws GitAPIException, IOException {
-        LinkedHashMap<CompositeKey, Integer> feature = new LinkedHashMap<>();
+    public static Map<CompositeKey, Integer> calculateMaxLocAdded (Git git, List<Ref> releases) throws GitAPIException, IOException {
+        Map<CompositeKey, Integer> feature = new LinkedHashMap<>();
         Map<String, Integer> maxLocAdded = new HashMap<>();
 
         for (int i = 0; i < releases.size() - 1; i++) {
@@ -317,7 +320,7 @@ public class FeatureCalculator {
                 String className = StringUtils.getFileName(element);
                 Integer locAdded = maxLocAdded.get(className);
                 if(locAdded != null) {
-                    CompositeKey key = new CompositeKey(StringUtils.removeSubstring(releases.get(i).getName(), "refs/tags/"), element);
+                    CompositeKey key = new CompositeKey(StringUtils.removeSubstring(releases.get(i).getName(), StringConstant.SUBSTRING_TO_REMOVE), element);
                     feature.put(key, locAdded);
                 }
             }
@@ -326,8 +329,8 @@ public class FeatureCalculator {
         return feature;
     }
 
-    public static LinkedHashMap<CompositeKey, Integer> calculateAverageLocAdded(Git git, List<Ref> releases) throws GitAPIException, IOException {
-        LinkedHashMap<CompositeKey, Integer> feature = new LinkedHashMap<>();
+    public static Map<CompositeKey, Integer> calculateAverageLocAdded(Git git, List<Ref> releases) throws GitAPIException, IOException {
+        Map<CompositeKey, Integer> feature = new LinkedHashMap<>();
         Map<String, List<Integer>> avgLocAdded = new HashMap<>();
 
         for(int i = 0; i < releases.size() - 1; i++) {
@@ -374,7 +377,7 @@ public class FeatureCalculator {
                     Integer locAdded = avgLocAdded.get(className).get(0);
                     Integer numberOfRevisions = avgLocAdded.get(className).get(1);
                     Integer avgLocAddedPerRevision = locAdded / numberOfRevisions;
-                    CompositeKey key = new CompositeKey(StringUtils.removeSubstring(releases.get(i).getName(), "refs/tags/"), element);
+                    CompositeKey key = new CompositeKey(StringUtils.removeSubstring(releases.get(i).getName(), StringConstant.SUBSTRING_TO_REMOVE), element);
                     feature.put(key, avgLocAddedPerRevision);
                 }
 
@@ -384,8 +387,8 @@ public class FeatureCalculator {
         return feature;
     }
 
-    public static LinkedHashMap<CompositeKey, Integer> calculateChurn(Git git, List<Ref> releases) throws GitAPIException, IOException {
-        LinkedHashMap<CompositeKey, Integer> feature = new LinkedHashMap<>();
+    public static Map<CompositeKey, Integer> calculateChurn(Git git, List<Ref> releases) throws GitAPIException, IOException {
+        Map<CompositeKey, Integer> feature = new LinkedHashMap<>();
         Map<String, Integer> churnMap = new HashMap<>();
 
         for(int i = 0; i < releases.size() - 1; i++) {
@@ -402,7 +405,8 @@ public class FeatureCalculator {
                         if(!FeatureCalculatorUtils.isPathValid(path)) continue;
                         String className = StringUtils.getFileName(path);
                         EditList editList = diffFormatter.toFileHeader(diffEntry).toEditList();
-                        int locAdded = 0 , locDeleted = 0;
+                        int locAdded = 0;
+                        int locDeleted = 0;
 
                         for(Edit edit : editList) {
                             if(edit.getType().equals(Edit.Type.INSERT)) {
@@ -430,7 +434,7 @@ public class FeatureCalculator {
                 String className = StringUtils.getFileName(element);
                 Integer churn = churnMap.get(className);
                 if(churn != null) {
-                    CompositeKey key = new CompositeKey(StringUtils.removeSubstring(releases.get(i).getName(), "refs/tags/"), element);
+                    CompositeKey key = new CompositeKey(StringUtils.removeSubstring(releases.get(i).getName(), StringConstant.SUBSTRING_TO_REMOVE), element);
                     feature.put(key, churn);
                 }
             }
@@ -439,8 +443,8 @@ public class FeatureCalculator {
         return feature;
     }
 
-    public static LinkedHashMap<CompositeKey, Integer> calculateMaxChurn(Git git, List<Ref> releases) throws GitAPIException, IOException {
-        LinkedHashMap<CompositeKey, Integer> feature = new LinkedHashMap<>();
+    public static Map<CompositeKey, Integer> calculateMaxChurn(Git git, List<Ref> releases) throws GitAPIException, IOException {
+        Map<CompositeKey, Integer> feature = new LinkedHashMap<>();
         Map<String, Integer> churnMap = new HashMap<>();
 
         for(int i = 0; i < releases.size() - 1; i++) {
@@ -457,7 +461,8 @@ public class FeatureCalculator {
                         if(!FeatureCalculatorUtils.isPathValid(path)) continue;
                         String className = StringUtils.getFileName(path);
                         EditList editList = diffFormatter.toFileHeader(diffEntry).toEditList();
-                        int locAdded = 0, locDeleted = 0;
+                        int locAdded = 0;
+                        int locDeleted = 0;
                         for(Edit edit : editList) {
                             if(edit.getType().equals(Edit.Type.INSERT)) {
                                 locAdded = locAdded + edit.getLengthA() + edit.getLengthB();
@@ -485,7 +490,7 @@ public class FeatureCalculator {
                 String className = StringUtils.getFileName(element);
                 Integer maxChurn = churnMap.get(className);
                 if(maxChurn != null) {
-                    CompositeKey key = new CompositeKey(StringUtils.removeSubstring(releases.get(i).getName(), "refs/tags/"), element);
+                    CompositeKey key = new CompositeKey(StringUtils.removeSubstring(releases.get(i).getName(), StringConstant.SUBSTRING_TO_REMOVE), element);
                     feature.put(key, maxChurn);
                 }
             }

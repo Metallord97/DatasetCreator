@@ -23,13 +23,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class FeatureCalculatorUtils {
+    private FeatureCalculatorUtils() {}
+
     public static InputStream readFileFromCommit (Repository repository, String commitID, String filepath) throws IOException {
         InputStream inputStream;
         ObjectId commit = repository.resolve(commitID);
         try (RevWalk revWalk = new RevWalk(repository)) {
             RevCommit revCommit = revWalk.parseCommit(commit);
             RevTree revTree = revCommit.getTree();
-            System.out.println("having tree: " + revTree);
 
             try(TreeWalk treeWalk = new TreeWalk(repository)) {
                 treeWalk.addTree(revTree);

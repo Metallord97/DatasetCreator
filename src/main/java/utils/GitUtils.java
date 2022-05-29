@@ -2,7 +2,6 @@ package utils;
 
 import features.FeatureCalculatorUtils;
 import labeling.Tag;
-import org.apache.commons.lang3.builder.Diff;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.diff.DiffEntry;
@@ -16,6 +15,7 @@ import java.io.IOException;
 import java.util.*;
 
 public class GitUtils {
+    private GitUtils() {}
     public static List<Ref> getTagOrderedByDate(Git git) throws GitAPIException, IOException {
         List<Ref> orderedTagList = git.tagList().call();
         orderedTagList.remove(orderedTagList.size() - 1);
@@ -41,8 +41,8 @@ public class GitUtils {
         return orderedTagList;
     }
 
-    public static LinkedHashMap<Tag, Integer> getReleaseDate(Git git) throws GitAPIException, IOException {
-        LinkedHashMap<Tag, Integer> release = new LinkedHashMap<>();
+    public static Map<Tag, Integer> getReleaseDate(Git git) throws GitAPIException, IOException {
+        Map<Tag, Integer> release = new LinkedHashMap<>();
         List<Ref> tagList = GitUtils.getTagOrderedByDate(git);
         int counter = 1;
 

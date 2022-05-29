@@ -15,6 +15,7 @@ import java.text.ParseException;
 import java.util.*;
 
 public class Labeling {
+    private Labeling() {}
     /**
      *
      * @param git
@@ -25,11 +26,10 @@ public class Labeling {
      */
     public static List<CompositeKey> affectedVersionLabeling (Git git) throws IOException, GitAPIException, ParseException {
         List<CompositeKey> buggyClasses = new ArrayList<>();
-        LinkedHashMap<Tag, Integer> releases = GitUtils.getReleaseDate(git);
+        Map<Tag, Integer> releases = GitUtils.getReleaseDate(git);
         JSONArray issues = RetrieveTicketsID.retrieveTicketIDs();
         ProportionLabeling proportionLabeling = ProportionLabeling.getInstance();
         proportionLabeling.incrementalProportion(git, issues);
-        int av = 0, proportion = 0;
 
         /* Mi prendo tutti i ticket e cerco su git il commit corrispondente
         *  Per i ticket che riportano l'affected version posso fare direttamente il labeling
@@ -41,23 +41,16 @@ public class Labeling {
             JSONArray versionsJson = fields.getJSONArray("versions");
             String resolutionDate = fields.get("resolutiondate").toString();
             String created = fields.get("created").toString();
-            System.out.println(key + " Affected Version: " + versionsJson.toString() + " Created: " + created + " Resolution: " + resolutionDate);
             if(versionsJson.length() == 0) {
-                proportion += 1;
-                System.out.println("PROPORTION");
                 Integer predictedIV = proportionLabeling.computePredictedIV(git, ParseUtils.convertToDate(created), ParseUtils.convertToDate(resolutionDate));
-                System.out.println("Predicted IV: " + predictedIV);
                 buggyClasses.addAll(Labeling.getAffectedVersions(git, ParseUtils.convertToDate(resolutionDate), predictedIV, key, releases));
             }
             else {
-                av += 1;
-                System.out.println("AFFECTED VERSION AVAILABLE");
                 List<String> versions = Labeling.jsonArrayToList(versionsJson, "name");
                 buggyClasses.addAll(Labeling.simpleLabeling(git,versions, key));
             }
 
         }
-        System.out.println("Proportion: " + proportion + " Affected Version Available: " + av);
 
         return buggyClasses;
     }
@@ -116,7 +109,7 @@ public class Labeling {
      * @throws GitAPIException
      * @throws IOException
      */
-    public static List<CompositeKey> getAffectedVersions(Git git, Date fixedDate, Integer predictedIV, String ticketID, LinkedHashMap<Tag, Integer> release) throws GitAPIException, IOException {
+    public static List<CompositeKey> getAffectedVersions(Git git, Date fixedDate, Integer predictedIV, String ticketID, Map<Tag, Integer> release) throws GitAPIException, IOException {
         List<CompositeKey> affectedVersion = new ArrayList<>();
         List<String> buggyClasses = GitUtils.getDiffClasses(git, ticketID);
 

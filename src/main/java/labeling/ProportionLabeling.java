@@ -36,18 +36,16 @@ public class ProportionLabeling {
         *  Calcolo quindi P per ogni bug, e quindi mi tengo per ogni versione una lista dei P calcolati
            Alla fine faccio la media per ogni versione */
 
-        LinkedHashMap<Tag, List<Integer>> pMap = new LinkedHashMap<>();
-        LinkedHashMap<Tag, Integer> release = GitUtils.getReleaseDate(git);
+        Map<Tag, List<Integer>> pMap = new LinkedHashMap<>();
+        Map<Tag, Integer> release = GitUtils.getReleaseDate(git);
         Set<Tag> keySet = release.keySet();
         for(Tag key : keySet) {
             List<Integer> pValues = new ArrayList<>();
             pMap.put(key, pValues);
-            System.out.println(key.getTagDate() + " " + key.getTagName() + " "+ release.get(key));
         }
         for (int i = 0; i < issues.length(); i++) {
             JSONObject issue = issues.getJSONObject(i);
             JSONObject fields = issue.getJSONObject("fields");
-            String tickedID = issue.get("key").toString();
             JSONArray versions = fields.getJSONArray("versions");
             String resolutionDate = fields.get("resolutiondate").toString();
             String created =  fields.get("created").toString();
@@ -57,8 +55,6 @@ public class ProportionLabeling {
             Integer injectedVersion = ProportionLabeling.getInjectedVersion(release, versions);
             Integer openingVersion = ProportionLabeling.getNextVersion(release, creationDate);
             Integer fixedVersion = ProportionLabeling.getNextVersion(release, resDate);
-            System.out.println("Creation Date: " + creationDate + " Resolution date: " + resDate);
-            System.out.println(tickedID + ": Injected Version: " + injectedVersion + " Opening Version: " + openingVersion + " Fixed Version: " + fixedVersion);
 
             if(injectedVersion < openingVersion && openingVersion < fixedVersion) {
                 Integer p = (fixedVersion - injectedVersion) / (fixedVersion - openingVersion);
@@ -67,12 +63,8 @@ public class ProportionLabeling {
             }
 
         }
-        int counter = 1;
+
         Set<Tag> versionSet = pMap.keySet();
-        for(Tag version : versionSet) {
-            System.out.println(counter + ": " + version.getTagName() + " " + version.getTagDate() + ": " + pMap.get(version).toString());
-            counter += 1;
-        }
         int total = 0;
         int bugCounter = 0;
         for (Tag version:versionSet) {
@@ -84,27 +76,19 @@ public class ProportionLabeling {
                 pValue.put(version, total / bugCounter);
             }
         }
-        counter = 0;
-        Set<Tag> keys = pValue.keySet();
-        for(Tag version : keys) {
-            System.out.println(counter + ": " + version.getTagName() + " " + version.getTagDate() + ": " + pValue.get(version));
-            counter += 1;
-        }
     }
 
     public Integer computePredictedIV(Git git, Date creationTickedDate, Date fixedTickedDate) throws GitAPIException, IOException {
-        LinkedHashMap<Tag, Integer> releases = GitUtils.getReleaseDate(git);
-        Integer FV = ProportionLabeling.getNextVersion(releases, fixedTickedDate);
-        Integer OV = ProportionLabeling.getNextVersion(releases, creationTickedDate);
-        Integer P = this.getP(fixedTickedDate);
+        Map<Tag, Integer> releases = GitUtils.getReleaseDate(git);
+        Integer fixedVersion = ProportionLabeling.getNextVersion(releases, fixedTickedDate);
+        Integer openingVersion = ProportionLabeling.getNextVersion(releases, creationTickedDate);
+        Integer p = this.getP(fixedTickedDate);
 
-        if(Objects.equals(FV, OV)) {
-            System.out.println("Opening Version: " + OV + " Fixed Version: " + FV);
-            return (FV - P);
+        if(Objects.equals(fixedVersion, openingVersion)) {
+            return (fixedVersion - p);
         }
         else {
-            System.out.println("Opening Version: " + OV + " Fixed Version: " + FV + " P: " + P);
-            return (FV - (FV - OV) * P);
+            return (fixedVersion - (fixedVersion - openingVersion) * p);
         }
     }
 
@@ -120,7 +104,7 @@ public class ProportionLabeling {
     }
 
 
-    public static Integer getInjectedVersion(LinkedHashMap<Tag, Integer> release, JSONArray affectedVersions) {
+    public static Integer getInjectedVersion(Map<Tag, Integer> release, JSONArray affectedVersions) {
         /* L'injected versione è la affected version più vecchia */
         Set<Tag> keySet = release.keySet();
         Integer injectedVersion = Integer.MAX_VALUE;
@@ -139,7 +123,7 @@ public class ProportionLabeling {
         return injectedVersion;
     }
 
-    public static Integer getNextVersion(LinkedHashMap<Tag, Integer> release, Date tickedDate) {
+    public static Integer getNextVersion(Map<Tag, Integer> release, Date tickedDate) {
         Integer nextVersion = release.entrySet().iterator().next().getValue();
         /* La opening version la trovo controllando quale versione viene subito dopo la creazione del ticket */
 
