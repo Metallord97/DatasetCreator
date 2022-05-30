@@ -79,4 +79,11 @@ public class GitUtils {
 
         return classList;
     }
+
+    public static DiffFormatter getDiffFormatter(Git git) {
+        try(DiffFormatter diffFormatter = new DiffFormatter(DisabledOutputStream.INSTANCE)) {
+            diffFormatter.setRepository(git.getRepository());
+            return diffFormatter;
+        }
+    }
 }
