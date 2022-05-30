@@ -221,14 +221,14 @@ public class FeatureCalculator {
             }
 
             /* qui mi trovo a fine release */
-            for (String element:classList) {
-                String className = StringUtils.getFileName(element);
+            for (String file:classList) {
+                String className = StringUtils.getFileName(file);
                 List<Integer> avg = avgLocAdded.get(className);
                 if(avg != null) {
                     Integer locAdded = avgLocAdded.get(className).get(0);
                     Integer numberOfRevisions = avgLocAdded.get(className).get(1);
                     Integer avgLocAddedPerRevision = locAdded / numberOfRevisions;
-                    CompositeKey key = new CompositeKey(StringUtils.removeSubstring(releases.get(i).getName(), StringConstant.SUBSTRING_TO_REMOVE), element);
+                    CompositeKey key = new CompositeKey(StringUtils.removeSubstring(releases.get(i).getName(), StringConstant.SUBSTRING_TO_REMOVE), file);
                     feature.put(key, avgLocAddedPerRevision);
                 }
 
