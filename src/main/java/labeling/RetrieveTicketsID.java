@@ -9,6 +9,7 @@ import java.net.URL;
 import java.nio.charset.Charset;
 
 public class RetrieveTicketsID {
+    private RetrieveTicketsID(){}
     private static String readAll(Reader rd) throws IOException {
         StringBuilder sb = new StringBuilder();
         int cp;

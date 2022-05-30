@@ -166,12 +166,7 @@ public class FeatureCalculatorUtils {
             if( !FeatureCalculatorUtils.isPathValid(path) ) continue;
             String className = StringUtils.getFileName(path);
             EditList editList = diffFormatter.toFileHeader(entry).toEditList();
-            int locAdded = 0;
-            for (Edit edit : editList) {
-                if (edit.getType().equals(Edit.Type.INSERT)) {
-                    locAdded = locAdded + edit.getLengthA() + edit.getLengthB();
-                }
-            }
+            int locAdded = FeatureCalculatorUtils.calculateLocAddedInAClass(editList);
             /* Se updatedLocAdded non contiene già il file lo aggiungo per la prima volta */
             if(!updatedLocAdded.containsKey(className)) {
                 updatedLocAdded.put(className, locAdded);
@@ -190,12 +185,7 @@ public class FeatureCalculatorUtils {
             if (! FeatureCalculatorUtils.isPathValid(path)) continue;
             String className = StringUtils.getFileName(path);
             EditList editList = diffFormatter.toFileHeader(diffEntry).toEditList();
-            int locAdded = 0;
-            for(Edit edit : editList) {
-                if (edit.getType().equals(Edit.Type.INSERT)) {
-                    locAdded = locAdded + edit.getLengthA() + edit.getLengthB();
-                }
-            }
+            int locAdded = FeatureCalculatorUtils.calculateLocAddedInAClass(editList);
             /* Se la mappa non contiene già il file lo aggiungo per la prima volta */
             if(!maxLocAdded.containsKey(className)) {
                 maxLocAdded.put(className, locAdded);
@@ -215,12 +205,7 @@ public class FeatureCalculatorUtils {
             if(!FeatureCalculatorUtils.isPathValid(path)) continue;
             String className = StringUtils.getFileName(path);
             EditList editList = diffFormatter.toFileHeader(diffEntry).toEditList();
-            int locAdded = 0;
-            for(Edit edit:editList) {
-                if(edit.getType().equals(Edit.Type.INSERT)) {
-                    locAdded = locAdded + edit.getLengthA() + edit.getLengthB();
-                }
-            }
+            int locAdded = FeatureCalculatorUtils.calculateLocAddedInAClass(editList);
             /* se la mappa non contiene il file lo aggiungo per la prima volta */
             if(!avgLocAdded.containsKey(className)) {
                 List<Integer> avgLocAddedList = new ArrayList<>();
@@ -236,24 +221,24 @@ public class FeatureCalculatorUtils {
         }
     }
 
+    private static int calculateLocAddedInAClass(EditList editList) {
+        int locAdded = 0;
+        for(Edit edit:editList) {
+            if(edit.getType().equals(Edit.Type.INSERT)) {
+                locAdded = locAdded + edit.getLengthA() + edit.getLengthB();
+            }
+        }
+        return locAdded;
+    }
+
     public static void calculateChurnUtils(Map<String, Integer> churnMap, List<DiffEntry> diffs, DiffFormatter diffFormatter) throws IOException {
         for(DiffEntry diffEntry : diffs) {
             String path = diffEntry.getNewPath();
             if(!FeatureCalculatorUtils.isPathValid(path)) continue;
             String className = StringUtils.getFileName(path);
             EditList editList = diffFormatter.toFileHeader(diffEntry).toEditList();
-            int locAdded = 0;
-            int locDeleted = 0;
 
-            for(Edit edit : editList) {
-                if(edit.getType().equals(Edit.Type.INSERT)) {
-                    locAdded = locAdded + edit.getLengthA() + edit.getLengthB();
-                }
-                if (edit.getType().equals(Edit.Type.DELETE)) {
-                    locDeleted = locDeleted + edit.getLengthA() + edit.getLengthB();
-                }
-            }
-            int churn = locAdded - locDeleted;
+            int churn = FeatureCalculatorUtils.calculateChurnOfAClass(editList);
             /* se la mappa non contiene il file lo aggiungo per la prima volta */
             if(!churnMap.containsKey(className)) {
                 churnMap.put(className, churn);
@@ -266,34 +251,38 @@ public class FeatureCalculatorUtils {
         }
     }
 
-    public static void calculateMaxChurnUtils(Map<String, Integer> churnMap, List<DiffEntry> diffs, DiffFormatter diffFormatter) throws IOException {
+    public static void calculateMaxChurnUtils(Map<String, Integer> maxChurnMap, List<DiffEntry> diffs, DiffFormatter diffFormatter) throws IOException {
         for(DiffEntry diffEntry: diffs) {
             String path = diffEntry.getNewPath();
             if(!FeatureCalculatorUtils.isPathValid(path)) continue;
             String className = StringUtils.getFileName(path);
             EditList editList = diffFormatter.toFileHeader(diffEntry).toEditList();
-            int locAdded = 0;
-            int locDeleted = 0;
-            for(Edit edit : editList) {
-                if(edit.getType().equals(Edit.Type.INSERT)) {
-                    locAdded = locAdded + edit.getLengthA() + edit.getLengthB();
-                }
-                if (edit.getType().equals(Edit.Type.DELETE)) {
-                    locDeleted = locDeleted + edit.getLengthA() + edit.getLengthB();
-                }
-            }
-            int churn = locAdded - locDeleted;
+            int churn = FeatureCalculatorUtils.calculateChurnOfAClass(editList);
             /* Se la mappa non contiene la classe la aggiungo per la prima volta */
-            if(!churnMap.containsKey(className)) {
-                churnMap.put(className, churn);
+            if(!maxChurnMap.containsKey(className)) {
+                maxChurnMap.put(className, churn);
             }
             /* altrimenti aggiorno il valore se necessario */
             else {
-                if(churn > churnMap.get(className)) {
-                    churnMap.put(className, churn);
+                if(churn > maxChurnMap.get(className)) {
+                    maxChurnMap.put(className, churn);
                 }
             }
         }
+    }
+
+    private static int calculateChurnOfAClass(EditList editList) {
+        int locAdded = 0;
+        int locDeleted = 0;
+        for(Edit edit : editList) {
+            if(edit.getType().equals(Edit.Type.INSERT)) {
+                locAdded = locAdded + edit.getLengthA() + edit.getLengthB();
+            }
+            if (edit.getType().equals(Edit.Type.DELETE)) {
+                locDeleted = locDeleted + edit.getLengthA() + edit.getLengthB();
+            }
+        }
+        return (locAdded - locDeleted);
     }
 
     public static void addResultSetOfTheRelease (Map<CompositeKey, Integer> feature, Map<String, Integer> featureOverRelease, List<String> classList, String releaseName) {
