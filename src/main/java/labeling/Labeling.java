@@ -18,7 +18,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class Labeling {
-    private static Logger LOGGER = Logger.getLogger(Labeling.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(Labeling.class.getName());
     private Labeling() {}
     /**
      *
@@ -47,7 +47,7 @@ public class Labeling {
             JSONArray versionsJson = fields.getJSONArray("versions");
             String resolutionDate = fields.get("resolutiondate").toString();
             String created = fields.get("created").toString();
-            LOGGER.log(Level.INFO, tickedID + " Opened: " + created + " Closed: " + resolutionDate);
+            LOGGER.log(Level.INFO, String.format("%s -> Opened: %s Closed: %s", tickedID, created, resolutionDate));
             if(versionsJson.length() == 0) {
                 LOGGER.log(Level.INFO, "Affected Version not available for this ticket. Using the proportion method...");
                 Integer predictedIV = proportionLabeling.computePredictedIV(git, ParseUtils.convertToDate(created), ParseUtils.convertToDate(resolutionDate));
@@ -102,7 +102,7 @@ public class Labeling {
                 affectedVersion.add(key);
             }
         }
-        LOGGER.log(Level.INFO, "Affected Version: " + affectedVersion.toString());
+        LOGGER.log(Level.INFO, String.format("Affected Version: %s", affectedVersion));
 
         return affectedVersion;
     }

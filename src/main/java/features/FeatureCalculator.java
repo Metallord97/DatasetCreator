@@ -24,7 +24,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class FeatureCalculator {
-    private static Logger LOGGER = Logger.getLogger(FeatureCalculator.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(FeatureCalculator.class.getName());
 
     private FeatureCalculator() {}
 

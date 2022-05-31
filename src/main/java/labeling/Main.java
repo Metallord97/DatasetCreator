@@ -35,7 +35,7 @@ public class Main {
 
     public static void main (String [] args) throws GitAPIException, IOException, ParseException {
         for(Project project : Project.values()) {
-            LOGGER.log(Level.INFO, "Scanning project " + project.label.toUpperCase() + "...");
+            LOGGER.log(Level.INFO, String.format("Scanning project %s...", project.label.toUpperCase()));
             Git git = Git.open(new File(project.label + "/.git"));
             List<Ref> call = git.tagList().call();
             Map<CompositeKey, Integer> sizes = FeatureCalculator.calculateSize(git, call);

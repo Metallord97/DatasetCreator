@@ -15,7 +15,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class ProportionLabeling {
-    private static Logger LOGGER = Logger.getLogger(ProportionLabeling.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(ProportionLabeling.class.getName());
     private final LinkedHashMap<Tag, Integer> pValue;
 
     private static ProportionLabeling instance = null;
@@ -94,7 +94,7 @@ public class ProportionLabeling {
         else {
             predictedIV = (fixedVersion - (fixedVersion - openingVersion) * p);
         }
-        LOGGER.log(Level.INFO, "Opening Version: " + openingVersion + " Fixed Version: " + fixedVersion + " Predicted Injected Version: " + predictedIV);
+        LOGGER.log(Level.INFO, String.format("Opening Version: %d Fixed Version: %d PredictedIV: %d", openingVersion, fixedVersion, predictedIV));
         return predictedIV;
     }
 
