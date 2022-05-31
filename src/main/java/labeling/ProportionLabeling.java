@@ -11,8 +11,11 @@ import utils.ParseUtils;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class ProportionLabeling {
+    private static Logger LOGGER = Logger.getLogger(ProportionLabeling.class.getName());
     private final LinkedHashMap<Tag, Integer> pValue;
 
     private static ProportionLabeling instance = null;
@@ -83,13 +86,16 @@ public class ProportionLabeling {
         Integer fixedVersion = ProportionLabeling.getNextVersion(releases, fixedTickedDate);
         Integer openingVersion = ProportionLabeling.getNextVersion(releases, creationTickedDate);
         Integer p = this.getP(fixedTickedDate);
+        int predictedIV;
 
         if(Objects.equals(fixedVersion, openingVersion)) {
-            return (fixedVersion - p);
+            predictedIV = fixedVersion - p;
         }
         else {
-            return (fixedVersion - (fixedVersion - openingVersion) * p);
+            predictedIV = (fixedVersion - (fixedVersion - openingVersion) * p);
         }
+        LOGGER.log(Level.INFO, "Opening Version: " + openingVersion + " Fixed Version: " + fixedVersion + " Predicted Injected Version: " + predictedIV);
+        return predictedIV;
     }
 
     public Integer getP(Date revisionDate) {

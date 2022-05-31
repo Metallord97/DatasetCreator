@@ -20,8 +20,11 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class FeatureCalculator {
+    private static Logger LOGGER = Logger.getLogger(FeatureCalculator.class.getName());
 
     private FeatureCalculator() {}
 
@@ -34,6 +37,7 @@ public class FeatureCalculator {
      * @throws GitAPIException
      */
     public static Map<CompositeKey, Integer> calculateSize(Git git, List<Ref> releases) throws GitAPIException, IOException {
+        LOGGER.log(Level.INFO, "Computing sizes...");
         Map<CompositeKey, Integer> feature = new LinkedHashMap<>();
         /* Per ogni release prendo l'ultimo commit relativo a quella release.
         *  Poi eseguo una ricerca sull'albero cercando i file java
@@ -71,6 +75,7 @@ public class FeatureCalculator {
     }
 
     public static Map<CompositeKey, Integer> calculateLocTouched (Git git, List<Ref> release) throws IOException, GitAPIException {
+        LOGGER.log(Level.INFO, "Computing LOC_TOUCHED...");
         Map<CompositeKey, Integer> feature = new LinkedHashMap<>();
         Map<String, Integer> updatedLocTouched = new HashMap<>();
         DiffFormatter diffFormatter = GitUtils.getDiffFormatter(git);
@@ -97,6 +102,7 @@ public class FeatureCalculator {
     }
 
     public static Map<CompositeKey, Integer> calculateNumberOfRevisions (Git git, List<Ref> release) throws IOException, GitAPIException {
+        LOGGER.log(Level.INFO, "Computing NR...");
         Map<CompositeKey, Integer> feature = new LinkedHashMap<>();
         Map<String, Integer> numberOfRevision = new HashMap<>();
         DiffFormatter diffFormatter = GitUtils.getDiffFormatter(git);
@@ -123,6 +129,7 @@ public class FeatureCalculator {
     }
 
     public static Map<CompositeKey, Integer> calculateNumberOfAuthors (Git git, List<Ref> releases) throws IOException, GitAPIException {
+        LOGGER.log(Level.INFO, "Computing NAuth...");
         Map<CompositeKey, Integer> feature = new LinkedHashMap<>();
         Map<String, List<String>> authorsMap = new LinkedHashMap<>();
         DiffFormatter diffFormatter = GitUtils.getDiffFormatter(git);
@@ -157,6 +164,7 @@ public class FeatureCalculator {
     }
 
     public static Map<CompositeKey, Integer> calculateLocAdded (Git git, List<Ref> releases) throws IOException, GitAPIException {
+        LOGGER.log(Level.INFO, "Computing LOC_added...");
         Map<CompositeKey, Integer> feature = new LinkedHashMap<>();
         Map<String, Integer> updatedLocAdded = new HashMap<>();
         DiffFormatter diffFormatter = GitUtils.getDiffFormatter(git);
@@ -182,6 +190,7 @@ public class FeatureCalculator {
     }
 
     public static Map<CompositeKey, Integer> calculateMaxLocAdded (Git git, List<Ref> releases) throws GitAPIException, IOException {
+        LOGGER.log(Level.INFO, "Computing MAX_LOC_ADDED...");
         Map<CompositeKey, Integer> feature = new LinkedHashMap<>();
         Map<String, Integer> maxLocAdded = new HashMap<>();
         DiffFormatter diffFormatter = GitUtils.getDiffFormatter(git);
@@ -205,6 +214,7 @@ public class FeatureCalculator {
     }
 
     public static Map<CompositeKey, Integer> calculateAverageLocAdded(Git git, List<Ref> releases) throws GitAPIException, IOException {
+        LOGGER.log(Level.INFO, "Computing AVG_LOC_ADDED...");
         Map<CompositeKey, Integer> feature = new LinkedHashMap<>();
         Map<String, List<Integer>> avgLocAdded = new HashMap<>();
         DiffFormatter diffFormatter = GitUtils.getDiffFormatter(git);
@@ -239,6 +249,7 @@ public class FeatureCalculator {
     }
 
     public static Map<CompositeKey, Integer> calculateChurn(Git git, List<Ref> releases) throws GitAPIException, IOException {
+        LOGGER.log(Level.INFO, "Computing churn...");
         Map<CompositeKey, Integer> feature = new LinkedHashMap<>();
         Map<String, Integer> churnMap = new HashMap<>();
         DiffFormatter diffFormatter = GitUtils.getDiffFormatter(git);
@@ -261,6 +272,7 @@ public class FeatureCalculator {
     }
 
     public static Map<CompositeKey, Integer> calculateMaxChurn(Git git, List<Ref> releases) throws GitAPIException, IOException {
+        LOGGER.log(Level.INFO, "Computing MAX_churn...");
         Map<CompositeKey, Integer> feature = new LinkedHashMap<>();
         Map<String, Integer> churnMap = new HashMap<>();
         DiffFormatter diffFormatter = GitUtils.getDiffFormatter(git);

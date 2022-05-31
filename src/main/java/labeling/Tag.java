@@ -11,6 +11,11 @@ public class Tag {
         this.tagName = tagName;
     }
 
+    @Override
+    public String toString() {
+        return this.tagDate + " " + this.tagName;
+    }
+
     public Date getTagDate() {
         return tagDate;
     }

@@ -18,6 +18,7 @@ import org.eclipse.jgit.revwalk.RevTree;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.PathFilter;
+import utils.GitUtils;
 import utils.StringConstant;
 import utils.StringUtils;
 
@@ -69,8 +70,8 @@ public class FeatureCalculatorUtils {
     }
 
     public static Iterable<RevCommit> getAllCommitsOfARelease(Git git, Ref from, Ref to) throws IncorrectObjectTypeException, MissingObjectException, GitAPIException {
-        ObjectId fromId = from.getPeeledObjectId();
-        ObjectId toId = to.getPeeledObjectId();
+        ObjectId fromId = GitUtils.getObjectIdFromRef(from);
+        ObjectId toId = GitUtils.getObjectIdFromRef(to);
         return git.log().addRange(fromId, toId).call();
     }
 

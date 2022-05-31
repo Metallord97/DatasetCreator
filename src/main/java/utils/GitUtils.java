@@ -6,6 +6,7 @@ import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.diff.DiffFormatter;
+import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
@@ -25,8 +26,8 @@ public class GitUtils {
             int min = i;
             for(int j = i+1; j < n; j++) {
                 try(RevWalk revWalk = new RevWalk(git.getRepository())) {
-                    RevCommit commitJ = revWalk.parseCommit(orderedTagList.get(j).getPeeledObjectId());
-                    RevCommit commitMin = revWalk.parseCommit(orderedTagList.get(min).getPeeledObjectId());
+                    RevCommit commitJ = revWalk.parseCommit(GitUtils.getObjectIdFromRef(orderedTagList.get(j)));
+                    RevCommit commitMin = revWalk.parseCommit(GitUtils.getObjectIdFromRef(orderedTagList.get(min)));
                     Date dateJ = commitJ.getAuthorIdent().getWhen();
                     Date dateMin = commitMin.getAuthorIdent().getWhen();
                     if(dateJ.before(dateMin)) {
@@ -48,7 +49,7 @@ public class GitUtils {
 
         for (Ref tag : tagList) {
             try(RevWalk revWalk = new RevWalk(git.getRepository())) {
-                RevCommit commit = revWalk.parseCommit(tag.getPeeledObjectId());
+                RevCommit commit = revWalk.parseCommit(GitUtils.getObjectIdFromRef(tag));
                 Date tagDate = commit.getAuthorIdent().getWhen();
                 Tag key = new Tag(tagDate, StringUtils.removeSubstring(tag.getName(), "refs/tags/"));
                 release.put(key, counter);
@@ -84,6 +85,17 @@ public class GitUtils {
         try(DiffFormatter diffFormatter = new DiffFormatter(DisabledOutputStream.INSTANCE)) {
             diffFormatter.setRepository(git.getRepository());
             return diffFormatter;
+        }
+    }
+
+    public static ObjectId getObjectIdFromRef(Ref ref) {
+        if(ref.getPeeledObjectId() != null) {
+            /* Annotated Tag */
+            return ref.getPeeledObjectId();
+        }
+        else {
+            /* Lightweight Tag */
+            return ref.getObjectId();
         }
     }
 }

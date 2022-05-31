@@ -1,5 +1,6 @@
 package labeling;
 
+import logging.LoggingUtils;
 import mydatatype.CompositeKey;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -13,8 +14,11 @@ import java.io.File;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class Labeling {
+    private static Logger LOGGER = Logger.getLogger(Labeling.class.getName());
     private Labeling() {}
     /**
      *
@@ -24,10 +28,12 @@ public class Labeling {
      * @throws GitAPIException
      * @throws ParseException
      */
-    public static List<CompositeKey> affectedVersionLabeling (Git git) throws IOException, GitAPIException, ParseException {
+    public static List<CompositeKey> affectedVersionLabeling (Git git, String projName) throws IOException, GitAPIException, ParseException {
+        LOGGER.log(Level.INFO, "Searching for buggy class...");
         List<CompositeKey> buggyClasses = new ArrayList<>();
         Map<Tag, Integer> releases = GitUtils.getReleaseDate(git);
-        JSONArray issues = RetrieveTicketsID.retrieveTicketIDs();
+        LoggingUtils.logMap(LOGGER, releases);
+        JSONArray issues = RetrieveTicketsID.retrieveTicketIDs(projName);
         ProportionLabeling proportionLabeling = ProportionLabeling.getInstance();
         proportionLabeling.incrementalProportion(git, issues);
 
@@ -36,18 +42,21 @@ public class Labeling {
         *  Se l'affected version non è riportata devo usare proportion */
         for(int i = 0; i < issues.length(); i++) {
             JSONObject jsonObject = issues.getJSONObject(i);
-            String key = jsonObject.get("key").toString();
+            String tickedID = jsonObject.get("key").toString();
             JSONObject fields = jsonObject.getJSONObject("fields");
             JSONArray versionsJson = fields.getJSONArray("versions");
             String resolutionDate = fields.get("resolutiondate").toString();
             String created = fields.get("created").toString();
+            LOGGER.log(Level.INFO, tickedID + " Opened: " + created + " Closed: " + resolutionDate);
             if(versionsJson.length() == 0) {
+                LOGGER.log(Level.INFO, "Affected Version not available for this ticket. Using the proportion method...");
                 Integer predictedIV = proportionLabeling.computePredictedIV(git, ParseUtils.convertToDate(created), ParseUtils.convertToDate(resolutionDate));
-                buggyClasses.addAll(Labeling.getAffectedVersions(git, ParseUtils.convertToDate(resolutionDate), predictedIV, key, releases));
+                buggyClasses.addAll(Labeling.getAffectedVersions(git, ParseUtils.convertToDate(resolutionDate), predictedIV, tickedID, releases));
             }
             else {
+                LOGGER.log(Level.INFO, "Affected Version available for this ticket!");
                 List<String> versions = Labeling.jsonArrayToList(versionsJson, "name");
-                buggyClasses.addAll(Labeling.simpleLabeling(git,versions, key));
+                buggyClasses.addAll(Labeling.simpleLabeling(git,versions, tickedID));
             }
 
         }
@@ -93,6 +102,7 @@ public class Labeling {
                 affectedVersion.add(key);
             }
         }
+        LOGGER.log(Level.INFO, "Affected Version: " + affectedVersion.toString());
 
         return affectedVersion;
     }

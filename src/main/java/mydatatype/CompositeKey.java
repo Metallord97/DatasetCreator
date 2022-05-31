@@ -11,6 +11,11 @@ public class CompositeKey {
     }
 
     @Override
+    public String toString() {
+        return "(" + this.release + ", " + this.className + ")";
+    }
+
+    @Override
     public int hashCode() {
         final int prime = 31;
         int result = 1;

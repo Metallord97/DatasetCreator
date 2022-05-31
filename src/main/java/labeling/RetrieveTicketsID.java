@@ -41,10 +41,9 @@ public class RetrieveTicketsID {
         }
     }
 
-    public static JSONArray retrieveTicketIDs() throws IOException {
+    public static JSONArray retrieveTicketIDs(String projName) throws IOException {
         JSONArray allIssues = new JSONArray();
 
-        String projName ="ZOOKEEPER";
         int j;
         int i = 0;
         int total;
