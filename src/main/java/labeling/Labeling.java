@@ -47,7 +47,7 @@ public class Labeling {
             JSONArray versionsJson = fields.getJSONArray("versions");
             String resolutionDate = fields.get("resolutiondate").toString();
             String created = fields.get("created").toString();
-            LOGGER.log(Level.INFO, String.format("%s -> Opened: %s Closed: %s", tickedID, created, resolutionDate));
+            LOGGER.log(Level.INFO, () -> tickedID + " -> Opened: " + created + " Closed: " + resolutionDate);
             if(versionsJson.length() == 0) {
                 LOGGER.log(Level.INFO, "Affected Version not available for this ticket. Using the proportion method...");
                 Integer predictedIV = proportionLabeling.computePredictedIV(git, ParseUtils.convertToDate(created), ParseUtils.convertToDate(resolutionDate));
