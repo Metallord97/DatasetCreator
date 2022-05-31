@@ -94,7 +94,7 @@ public class ProportionLabeling {
         else {
             predictedIV = (fixedVersion - (fixedVersion - openingVersion) * p);
         }
-        LOGGER.log(Level.INFO, String.format("Opening Version: %d Fixed Version: %d PredictedIV: %d", openingVersion, fixedVersion, predictedIV));
+        LOGGER.log(Level.INFO, () -> "Opening Version: " + openingVersion  + " Fixed Version: " + fixedVersion + " PredictedIV: " + predictedIV);
         return predictedIV;
     }
 

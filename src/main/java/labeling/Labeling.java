@@ -102,7 +102,7 @@ public class Labeling {
                 affectedVersion.add(key);
             }
         }
-        LOGGER.log(Level.INFO, String.format("Affected Version: %s", affectedVersion));
+        LOGGER.log(Level.INFO, () -> "Affected Version: " + affectedVersion);
 
         return affectedVersion;
     }

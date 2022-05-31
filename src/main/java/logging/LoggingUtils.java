@@ -9,7 +9,7 @@ public class LoggingUtils {
 
     public static <T, E> void logMap(Logger logger, Map<T, E> map) {
         for(Map.Entry<T, E> entry : map.entrySet()) {
-            logger.log(Level.INFO, String.format("%s: %s", entry.getKey(), entry.getValue()));
+            logger.log(Level.INFO, () -> entry.getKey() + ": " + entry.getValue());
         }
     }
 
