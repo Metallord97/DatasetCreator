@@ -2,10 +2,10 @@ package mydatatype;
 
 public class CompositeKey {
 
-    private final String release;
+    private final Integer release;
     private final String className;
 
-    public CompositeKey(String release, String className) {
+    public CompositeKey(Integer release, String className) {
         this.release = release;
         this.className = className;
     }
@@ -48,7 +48,7 @@ public class CompositeKey {
     }
 
 
-    public String getRelease() {
+    public Integer getRelease() {
         return release;
     }
 

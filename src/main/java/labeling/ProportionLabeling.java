@@ -55,9 +55,9 @@ public class ProportionLabeling {
             if(versions.length() == 0) continue;
             Date resDate = ParseUtils.convertToDate(resolutionDate);
             Date creationDate = ParseUtils.convertToDate(created);
-            Integer injectedVersion = ProportionLabeling.getInjectedVersion(release, versions);
-            Integer openingVersion = ProportionLabeling.getNextVersion(release, creationDate);
-            Integer fixedVersion = ProportionLabeling.getNextVersion(release, resDate);
+            Integer injectedVersion = ProportionLabeling.getInjectedVersion( versions);
+            Integer openingVersion = ProportionLabeling.getNextVersion(creationDate);
+            Integer fixedVersion = ProportionLabeling.getNextVersion(resDate);
 
             if(injectedVersion < openingVersion && openingVersion < fixedVersion) {
                 Integer p = (fixedVersion - injectedVersion) / (fixedVersion - openingVersion);
@@ -83,8 +83,8 @@ public class ProportionLabeling {
 
     public Integer computePredictedIV(Git git, Date creationTickedDate, Date fixedTickedDate) throws GitAPIException, IOException {
         Map<Tag, Integer> releases = GitUtils.getReleaseDate(git);
-        Integer fixedVersion = ProportionLabeling.getNextVersion(releases, fixedTickedDate);
-        Integer openingVersion = ProportionLabeling.getNextVersion(releases, creationTickedDate);
+        Integer fixedVersion = ProportionLabeling.getNextVersion( fixedTickedDate);
+        Integer openingVersion = ProportionLabeling.getNextVersion(creationTickedDate);
         Integer p = this.getP(fixedTickedDate);
         int predictedIV;
 
@@ -110,17 +110,16 @@ public class ProportionLabeling {
     }
 
 
-    public static Integer getInjectedVersion(Map<Tag, Integer> release, JSONArray affectedVersions) {
+    public static Integer getInjectedVersion(JSONArray affectedVersions) {
         /* L'injected versione è la affected version più vecchia */
-        Set<Tag> keySet = release.keySet();
         Integer injectedVersion = Integer.MAX_VALUE;
 
         for(int i = 0; i <affectedVersions.length(); i++) {
 
             String affectedVersion = affectedVersions.getJSONObject(i).get("name").toString();
-            for(Tag key : keySet) {
-                if(key.getTagName().contains(affectedVersion) && release.get(key) < injectedVersion) {
-                    injectedVersion = release.get(key);
+            for(Tag key : ReleaseKeeper.getInstance().getReleaseKeySet()) {
+                if(key.getTagName().contains(affectedVersion) && ReleaseKeeper.getInstance().getIdFromTag(key) < injectedVersion) {
+                    injectedVersion = ReleaseKeeper.getInstance().getIdFromTag(key);
                 }
             }
 
@@ -129,14 +128,13 @@ public class ProportionLabeling {
         return injectedVersion;
     }
 
-    public static Integer getNextVersion(Map<Tag, Integer> release, Date tickedDate) {
-        Integer nextVersion = release.entrySet().iterator().next().getValue();
+    public static Integer getNextVersion(Date tickedDate) {
+        Integer nextVersion = ReleaseKeeper.getInstance().getReleaseMap().entrySet().iterator().next().getValue();
         /* La opening version la trovo controllando quale versione viene subito dopo la creazione del ticket */
 
-        Set<Tag> dateSet = release.keySet();
-        for(Tag tag: dateSet) {
+        for(Tag tag: ReleaseKeeper.getInstance().getReleaseKeySet()) {
             if(tag.getTagDate().after(tickedDate)) {
-                nextVersion = release.get(tag);
+                nextVersion = ReleaseKeeper.getInstance().getIdFromTag(tag);
                 break;
             }
         }

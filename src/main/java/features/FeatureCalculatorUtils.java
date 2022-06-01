@@ -1,5 +1,7 @@
 package features;
 
+import labeling.ReleaseKeeper;
+import labeling.Tag;
 import mydatatype.CompositeKey;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -69,15 +71,21 @@ public class FeatureCalculatorUtils {
         return (extension.equals("java") && !StringUtils.hasMatchingSubstring(path, "/test", "Test"));
     }
 
-    public static Iterable<RevCommit> getAllCommitsOfARelease(Git git, Ref from, Ref to) throws IncorrectObjectTypeException, MissingObjectException, GitAPIException {
+    public static Iterable<RevCommit> getAllCommitsOfARelease(Git git, Integer releaseId) throws IOException, GitAPIException {
+        Tag fromTag = ReleaseKeeper.getInstance().getTagFromId(releaseId);
+        Ref from = git.getRepository().exactRef(StringConstant.REFS_TAGS + fromTag.getTagName());
+        Tag toTag = ReleaseKeeper.getInstance().getTagFromId(releaseId + 1);
+        if(toTag == null) return null;
+        Ref to = git.getRepository().exactRef(StringConstant.REFS_TAGS + toTag.getTagName());
         ObjectId fromId = GitUtils.getObjectIdFromRef(from);
         ObjectId toId = GitUtils.getObjectIdFromRef(to);
         return git.log().addRange(fromId, toId).call();
     }
 
-    public static List<String> getAllFileOfTheRelease(Git git, Ref from, Ref to) throws IOException, GitAPIException {
+    public static List<String> getAllFileOfTheRelease(Git git, Integer releaseId) throws IOException, GitAPIException {
         List<String> classList = new ArrayList<>();
-        Iterable<RevCommit> commits = FeatureCalculatorUtils.getAllCommitsOfARelease(git, from, to);
+        Iterable<RevCommit> commits = FeatureCalculatorUtils.getAllCommitsOfARelease(git, releaseId);
+        if(commits == null) return null;
         RevCommit lastCommit = null;
         for(RevCommit commit : commits) {
             lastCommit = commit;
@@ -286,12 +294,12 @@ public class FeatureCalculatorUtils {
         return (locAdded - locDeleted);
     }
 
-    public static void addResultSetOfTheRelease (Map<CompositeKey, Integer> feature, Map<String, Integer> featureOverRelease, List<String> classList, String releaseName) {
+    public static void addResultSetOfTheRelease (Map<CompositeKey, Integer> feature, Map<String, Integer> featureOverRelease, List<String> classList, Integer releaseId) {
         for(String element: classList) {
             String className = StringUtils.getFileName(element);
             Integer featureOverReleaseValue = featureOverRelease.get(className);
             if(featureOverReleaseValue != null) {
-                CompositeKey key = new CompositeKey(StringUtils.removeSubstring(releaseName, StringConstant.SUBSTRING_TO_REMOVE), element);
+                CompositeKey key = new CompositeKey(releaseId, element);
                 feature.put(key, featureOverReleaseValue);
             }
         }

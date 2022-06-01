@@ -30,6 +30,7 @@ public class Labeling {
      */
     public static List<CompositeKey> affectedVersionLabeling (Git git, String projName) throws IOException, GitAPIException, ParseException {
         LOGGER.log(Level.INFO, "Searching for buggy class...");
+
         List<CompositeKey> buggyClasses = new ArrayList<>();
         Map<Tag, Integer> releases = GitUtils.getReleaseDate(git);
         LoggingUtils.logMap(LOGGER, releases);
@@ -51,7 +52,7 @@ public class Labeling {
             if(versionsJson.length() == 0) {
                 LOGGER.log(Level.INFO, "Affected Version not available for this ticket. Using the proportion method...");
                 Integer predictedIV = proportionLabeling.computePredictedIV(git, ParseUtils.convertToDate(created), ParseUtils.convertToDate(resolutionDate));
-                buggyClasses.addAll(Labeling.getAffectedVersions(git, ParseUtils.convertToDate(resolutionDate), predictedIV, tickedID, releases));
+                buggyClasses.addAll(Labeling.getAffectedVersions(git, ParseUtils.convertToDate(resolutionDate), predictedIV, tickedID));
             }
             else {
                 LOGGER.log(Level.INFO, "Affected Version available for this ticket!");
@@ -98,7 +99,7 @@ public class Labeling {
 
         for(String version : versions) {
             for (String buggyClass : buggyClasses) {
-                CompositeKey key = new CompositeKey("release-" + version, buggyClass);
+                CompositeKey key = new CompositeKey(ReleaseKeeper.getInstance().getIdFromTagName("release-" + version),  buggyClass);
                 affectedVersion.add(key);
             }
         }
@@ -114,21 +115,19 @@ public class Labeling {
      * @param fixedDate data della chiusura del ticket
      * @param predictedIV injected version predetta con proportion
      * @param ticketID id del ticket in jira
-     * @param release mappa che associa ogni release con la sua data a un numero in ordine di uscita temporale
      * @return Ritorna una lista con le CompositeKey buggy
      * @throws GitAPIException
      * @throws IOException
      */
-    public static List<CompositeKey> getAffectedVersions(Git git, Date fixedDate, Integer predictedIV, String ticketID, Map<Tag, Integer> release) throws GitAPIException, IOException {
+    public static List<CompositeKey> getAffectedVersions(Git git, Date fixedDate, Integer predictedIV, String ticketID) throws GitAPIException, IOException {
         List<CompositeKey> affectedVersion = new ArrayList<>();
         List<String> buggyClasses = GitUtils.getDiffClasses(git, ticketID);
 
-        int fixedVersion = ProportionLabeling.getNextVersion(release, fixedDate);
-        Set<Tag> tagSet = release.keySet();
-        for (Tag tag : tagSet) {
-            if(release.get(tag) >= predictedIV && release.get(tag) < fixedVersion) {
+        int fixedVersion = ProportionLabeling.getNextVersion(fixedDate);
+        for (Tag tag : ReleaseKeeper.getInstance().getReleaseKeySet()) {
+            if(ReleaseKeeper.getInstance().getIdFromTag(tag) >= predictedIV && ReleaseKeeper.getInstance().getIdFromTag(tag) < fixedVersion) {
                 for(String buggyClass : buggyClasses) {
-                    CompositeKey key = new CompositeKey(StringUtils.removeSubstring(tag.getTagName(), "refs/tags/"), buggyClass);
+                    CompositeKey key = new CompositeKey(ReleaseKeeper.getInstance().getIdFromTag(tag), buggyClass);
                     affectedVersion.add(key);
                 }
             }
