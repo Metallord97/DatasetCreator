@@ -9,57 +9,25 @@ import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.diff.DiffFormatter;
 import org.eclipse.jgit.diff.Edit;
 import org.eclipse.jgit.diff.EditList;
-import org.eclipse.jgit.errors.IncorrectObjectTypeException;
-import org.eclipse.jgit.errors.MissingObjectException;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectLoader;
 import org.eclipse.jgit.lib.Ref;
-import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
-import org.eclipse.jgit.revwalk.RevTree;
-import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.treewalk.TreeWalk;
-import org.eclipse.jgit.treewalk.filter.PathFilter;
 import utils.GitUtils;
+import utils.SourceCodeLineCounter;
 import utils.StringConstant;
 import utils.StringUtils;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 public class FeatureCalculatorUtils {
     private FeatureCalculatorUtils() {}
 
-    public static InputStream readFileFromCommit (Repository repository, String commitID, String filepath) throws IOException {
-        InputStream inputStream;
-        ObjectId commit = repository.resolve(commitID);
-        try (RevWalk revWalk = new RevWalk(repository)) {
-            RevCommit revCommit = revWalk.parseCommit(commit);
-            RevTree revTree = revCommit.getTree();
-
-            try(TreeWalk treeWalk = new TreeWalk(repository)) {
-                treeWalk.addTree(revTree);
-                treeWalk.setRecursive(true);
-                treeWalk.setFilter(PathFilter.create(filepath));
-                if (!treeWalk.next()) {
-                    throw new IllegalStateException("Did not find expected file:" + filepath);
-                }
-                ObjectId objectId = treeWalk.getObjectId(0);
-                ObjectLoader loader = repository.open(objectId);
-
-                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-                loader.copyTo(byteArrayOutputStream);
-                inputStream = new ByteArrayInputStream(byteArrayOutputStream.toByteArray());
-            }
-            revWalk.dispose();
-        }
-        return inputStream;
-    }
 
     /**
      *
@@ -85,20 +53,20 @@ public class FeatureCalculatorUtils {
     public static List<String> getAllFileOfTheRelease(Git git, Integer releaseId) throws IOException, GitAPIException {
         List<String> classList = new ArrayList<>();
         Iterable<RevCommit> commits = FeatureCalculatorUtils.getAllCommitsOfARelease(git, releaseId);
-        if(commits == null) return null;
-        RevCommit lastCommit = null;
+        if(commits == null) return Collections.emptyList();
+        RevCommit last = null;
         for(RevCommit commit : commits) {
-            lastCommit = commit;
+            last = commit;
         }
-        if (lastCommit != null) {
-            ObjectId treeId = lastCommit.getTree().getId();
+        if (last != null) {
+            ObjectId treeId = last.getTree().getId();
             try (TreeWalk treeWalk = new TreeWalk(git.getRepository())) {
                 treeWalk.reset(treeId);
                 treeWalk.setRecursive(true);
                 while (treeWalk.next()) {
-                    String path = treeWalk.getPathString();
-                    if (FeatureCalculatorUtils.isPathValid(path)) {
-                        classList.add(path);
+                    String filePath = treeWalk.getPathString();
+                    if (FeatureCalculatorUtils.isPathValid(filePath)) {
+                        classList.add(filePath);
                     }
                 }
             }
@@ -302,6 +270,34 @@ public class FeatureCalculatorUtils {
                 CompositeKey key = new CompositeKey(releaseId, element);
                 feature.put(key, featureOverReleaseValue);
             }
+        }
+    }
+
+    public static void addResultNAuth(Map<CompositeKey, Integer> feature, List<String> classList, Map<String, List<String>> authorsMap, Tag release) {
+        /* A fine release per ogni file java mi vado a prendere il valore associato nella Map
+         *  Se esiste allora metto i dati nella nuova mappa (release, class_name)->NAuth */
+        for(String element : classList) {
+            String className = StringUtils.getFileName(element);
+            List<String> authors = authorsMap.get(className);
+            if (authors != null) {
+                CompositeKey key = new CompositeKey(ReleaseKeeper.getInstance().getIdFromTag(release), element);
+                feature.put(key, authors.size());
+            }
+        }
+    }
+
+    public static void addResultAvgLocAdded(Map<CompositeKey, Integer> feature, List<String> classList, Map<String, List<Integer>> avgLocAdded, Tag release) {
+        for (String file:classList) {
+            String className = StringUtils.getFileName(file);
+            List<Integer> avg = avgLocAdded.get(className);
+            if(avg != null) {
+                Integer locAdded = avgLocAdded.get(className).get(0);
+                Integer numberOfRevisions = avgLocAdded.get(className).get(1);
+                Integer avgLocAddedPerRevision = locAdded / numberOfRevisions;
+                CompositeKey key = new CompositeKey(ReleaseKeeper.getInstance().getIdFromTag(release), file);
+                feature.put(key, avgLocAddedPerRevision);
+            }
+
         }
     }
 }

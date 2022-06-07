@@ -23,10 +23,87 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static features.Feature.LOC_TOUCHED;
+
 public class FeatureCalculator {
     private static final Logger LOGGER = Logger.getLogger(FeatureCalculator.class.getName());
 
     private FeatureCalculator() {}
+
+    public static Map<CompositeKey, Integer> computeFeature(Git git, final Feature feature) throws GitAPIException, IOException {
+        if(feature.equals(Feature.SIZE)) {
+            return FeatureCalculator.calculateSize(git);
+        }
+        LOGGER.log(Level.INFO, () -> "Computing" + feature);
+        Map<CompositeKey, Integer> column = new LinkedHashMap<>();
+        Map<String, List<String>> authorsMap = new LinkedHashMap<>();
+        DiffFormatter diffFormatter = GitUtils.getDiffFormatter(git);
+
+        for(Tag release: ReleaseKeeper.getInstance().getReleaseKeySet()) {
+            Map<String, Integer> featureOverRelease = new HashMap<>();
+            Map<String, List<Integer>> avgLocAdded = new HashMap<>();
+            Iterable<RevCommit> commits = FeatureCalculatorUtils.getAllCommitsOfARelease(git, ReleaseKeeper.getInstance().getIdFromTag(release));
+            if(commits == null) break;
+            List<String> classList = FeatureCalculatorUtils.getAllFileOfTheRelease(git, ReleaseKeeper.getInstance().getIdFromTag(release));
+
+            for(RevCommit commit: commits) {
+                if(commit.getParentCount() == 0) continue;
+                RevCommit prevCommit = commit.getParent(0);
+                List<DiffEntry> diffs = diffFormatter.scan(prevCommit, commit);
+
+                switch (feature) {
+                    case LOC_TOUCHED:
+                        FeatureCalculatorUtils.calculateLocTouchedUtils(featureOverRelease, diffs, diffFormatter);
+                        break;
+                    case NR:
+                        FeatureCalculatorUtils.calculateNumberOfRevisionsUtils(featureOverRelease, diffs);
+                        break;
+                    case NAUTH:
+                        String author = commit.getAuthorIdent().getName();
+                        FeatureCalculatorUtils.calculateNumberOfAuthorsUtils(authorsMap, diffs, author);
+                        break;
+                    case LOC_ADDED:
+                        FeatureCalculatorUtils.calculateLocAddedUtils(featureOverRelease, diffs, diffFormatter);
+                        break;
+                    case MAX_LOC_ADDED:
+                        FeatureCalculatorUtils.calculateMaxLocAddedUtils(featureOverRelease, diffs, diffFormatter);
+                        break;
+                    case AVG_LOC_ADDED:
+                        FeatureCalculatorUtils.calculateAverageLocAddedUtils(avgLocAdded, diffs, diffFormatter);
+                        break;
+                    case CHURN:
+                        FeatureCalculatorUtils.calculateChurnUtils(featureOverRelease, diffs, diffFormatter);
+                        break;
+                    case MAX_CHURN:
+                        FeatureCalculatorUtils.calculateMaxChurnUtils(featureOverRelease, diffs, diffFormatter);
+                        break;
+                    default:
+                        throw new RuntimeException("Switch out of case");
+                }
+
+            }
+            switch (feature) {
+                case LOC_TOUCHED:
+                case NR:
+                case LOC_ADDED:
+                case MAX_LOC_ADDED:
+                case CHURN:
+                case MAX_CHURN:
+                    FeatureCalculatorUtils.addResultSetOfTheRelease(column, featureOverRelease, classList, ReleaseKeeper.getInstance().getIdFromTag(release));
+                    break;
+                case NAUTH:
+                    FeatureCalculatorUtils.addResultNAuth(column, classList, authorsMap, release);
+                    break;
+                case AVG_LOC_ADDED:
+                    FeatureCalculatorUtils.addResultAvgLocAdded(column, classList, avgLocAdded,release);
+                    break;
+                default:
+                    throw new RuntimeException("Switch out of case");
+            }
+        }
+
+        return column;
+    }
 
     /**
      * Dato in input il repository, la lista delle release e il nome del progetto calcola il LOC per ogni classe raggruppando per chiave (projectName, release, className)
@@ -74,237 +151,6 @@ public class FeatureCalculator {
         return feature;
     }
 
-    public static Map<CompositeKey, Integer> calculateLocTouched (Git git) throws IOException, GitAPIException {
-        LOGGER.log(Level.INFO, "Computing LOC_TOUCHED...");
-        Map<CompositeKey, Integer> feature = new LinkedHashMap<>();
-        Map<String, Integer> updatedLocTouched = new HashMap<>();
-        DiffFormatter diffFormatter = GitUtils.getDiffFormatter(git);
-        /* Per ogni release itero su tutti i commit, per ogni commit prendo i file java che sono stati toccati dal quel commit
-           per ogni file controllo quante righe sono state aggiunte e rimosse aggiornando sempre updatedLocTouched
-           dopodichè inserisco in feature i loc touched di quella classe nella determinata release
-         */
-        for(Tag release : ReleaseKeeper.getInstance().getReleaseKeySet()) {
-            Iterable<RevCommit> commits = FeatureCalculatorUtils.getAllCommitsOfARelease(git, ReleaseKeeper.getInstance().getIdFromTag(release));
-            List<String> classList = FeatureCalculatorUtils.getAllFileOfTheRelease(git, ReleaseKeeper.getInstance().getIdFromTag(release));
-            if(commits == null || classList == null) break;
-
-            for (RevCommit commit : commits) {
-                if(commit.getParentCount() == 0) continue;
-                RevCommit prevCommit = commit.getParent(0);
-                List<DiffEntry> diffs = diffFormatter.scan(prevCommit, commit);
-                FeatureCalculatorUtils.calculateLocTouchedUtils(updatedLocTouched, diffs, diffFormatter);
-            }
-
-            /* Ora mi trovo a fine release */
-            FeatureCalculatorUtils.addResultSetOfTheRelease(feature, updatedLocTouched, classList, ReleaseKeeper.getInstance().getIdFromTag(release));
-        }
-
-        return feature;
-    }
-
-    public static Map<CompositeKey, Integer> calculateNumberOfRevisions (Git git) throws IOException, GitAPIException {
-        LOGGER.log(Level.INFO, "Computing NR...");
-
-        Map<CompositeKey, Integer> feature = new LinkedHashMap<>();
-        Map<String, Integer> numberOfRevision = new HashMap<>();
-        DiffFormatter diffFormatter = GitUtils.getDiffFormatter(git);
-        /*
-        Per ogni release scorro tutti i commit e per ognuno prendo le classi java modificate
-        tengo un contatore per ogni classe che segna quante volte la classe è stata modificata nella release
-         */
-        for(Tag release : ReleaseKeeper.getInstance().getReleaseKeySet()) {
-            Iterable<RevCommit> commits = FeatureCalculatorUtils.getAllCommitsOfARelease(git, ReleaseKeeper.getInstance().getIdFromTag(release));
-            List<String> classList = FeatureCalculatorUtils.getAllFileOfTheRelease(git, ReleaseKeeper.getInstance().getIdFromTag(release));
-            if(commits == null || classList == null) break;
-
-            for (RevCommit commit : commits) {
-                if(commit.getParentCount() == 0) continue;
-                RevCommit prevCommit = commit.getParent(0);
-                List<DiffEntry> diffs = diffFormatter.scan(prevCommit, commit);
-                FeatureCalculatorUtils.calculateNumberOfRevisionsUtils(numberOfRevision, diffs);
-            }
-
-            /* qui mi trovo a fine release */
-            FeatureCalculatorUtils.addResultSetOfTheRelease(feature, numberOfRevision, classList, ReleaseKeeper.getInstance().getIdFromTag(release));
-        }
-
-        return feature;
-    }
-
-    public static Map<CompositeKey, Integer> calculateNumberOfAuthors (Git git) throws IOException, GitAPIException {
-        LOGGER.log(Level.INFO, "Computing NAuth...");
-
-        Map<CompositeKey, Integer> feature = new LinkedHashMap<>();
-        Map<String, List<String>> authorsMap = new LinkedHashMap<>();
-        DiffFormatter diffFormatter = GitUtils.getDiffFormatter(git);
-        /* Per ogni release prendo tutti i commit
-        *  per ogni commit controllo chi ha fatto quel commit e quali file ha modificato
-        *  creo una associazione nome_file->(lista di autori) e li conto a fine di ogni release */
-        for(Tag release : ReleaseKeeper.getInstance().getReleaseKeySet()) {
-            Iterable<RevCommit> commits = FeatureCalculatorUtils.getAllCommitsOfARelease(git, ReleaseKeeper.getInstance().getIdFromTag(release));
-            List<String> classList = FeatureCalculatorUtils.getAllFileOfTheRelease(git, ReleaseKeeper.getInstance().getIdFromTag(release));
-            if(commits == null || classList == null) break;
-
-            for (RevCommit commit : commits) {
-                if (commit.getParentCount() == 0) continue;
-                RevCommit prevCommit = commit.getParent(0);
-                String author = commit.getAuthorIdent().getName();
-                List<DiffEntry> diffs = diffFormatter.scan(prevCommit, commit);
-                FeatureCalculatorUtils.calculateNumberOfAuthorsUtils(authorsMap, diffs, author);
-            }
-
-            /* A fine release per ogni file java mi vado a prendere il valore associato nella Map
-             *  Se esiste allora metto i dati nella nuova mappa (release, class_name)->NAuth */
-            for(String element : classList) {
-                String className = StringUtils.getFileName(element);
-                List<String> authors = authorsMap.get(className);
-                if (authors != null) {
-                    CompositeKey key = new CompositeKey(ReleaseKeeper.getInstance().getIdFromTag(release), element);
-                    feature.put(key, authors.size());
-                }
-            }
-        }
-
-        return feature;
-    }
-
-    public static Map<CompositeKey, Integer> calculateLocAdded (Git git) throws IOException, GitAPIException {
-        LOGGER.log(Level.INFO, "Computing LOC_added...");
-        Map<CompositeKey, Integer> feature = new LinkedHashMap<>();
-        Map<String, Integer> updatedLocAdded = new HashMap<>();
-        DiffFormatter diffFormatter = GitUtils.getDiffFormatter(git);
-        /* Per ogni release itero su tutti i commit
-        *  Per ogni commit mi prendo i file modificati
-        *  Per ogni file mi calcolo quante linee sono state aggiunte */
-        for(Tag release : ReleaseKeeper.getInstance().getReleaseKeySet()) {
-            Iterable<RevCommit> commits = FeatureCalculatorUtils.getAllCommitsOfARelease(git, ReleaseKeeper.getInstance().getIdFromTag(release));
-            List<String> classList = FeatureCalculatorUtils.getAllFileOfTheRelease(git, ReleaseKeeper.getInstance().getIdFromTag(release));
-            if(commits == null || classList == null) break;
-
-            for (RevCommit commit : commits) {
-                if(commit.getParentCount() == 0) continue;
-                RevCommit prevCommit = commit.getParent(0);
-                List<DiffEntry> diffs = diffFormatter.scan(prevCommit, commit);
-                FeatureCalculatorUtils.calculateLocAddedUtils(updatedLocAdded, diffs, diffFormatter);
-            }
-
-            /* Ora mi trovo a fine release */
-            FeatureCalculatorUtils.addResultSetOfTheRelease(feature, updatedLocAdded, classList, ReleaseKeeper.getInstance().getIdFromTag(release));
-        }
-
-        return feature;
-    }
-
-    public static Map<CompositeKey, Integer> calculateMaxLocAdded (Git git) throws GitAPIException, IOException {
-        LOGGER.log(Level.INFO, "Computing MAX_LOC_ADDED...");
-        Map<CompositeKey, Integer> feature = new LinkedHashMap<>();
-        Map<String, Integer> maxLocAdded = new HashMap<>();
-        DiffFormatter diffFormatter = GitUtils.getDiffFormatter(git);
-
-        for(Tag release : ReleaseKeeper.getInstance().getReleaseKeySet()) {
-            Iterable<RevCommit> commits = FeatureCalculatorUtils.getAllCommitsOfARelease(git, ReleaseKeeper.getInstance().getIdFromTag(release));
-            List<String> classList = FeatureCalculatorUtils.getAllFileOfTheRelease(git, ReleaseKeeper.getInstance().getIdFromTag(release));
-            if(commits == null || classList == null) break;
-
-            for (RevCommit commit: commits) {
-                if (commit.getParentCount() == 0) continue;
-                RevCommit prevCommit = commit.getParent(0);
-                List<DiffEntry> diffEntries = diffFormatter.scan(prevCommit, commit);
-                FeatureCalculatorUtils.calculateMaxLocAddedUtils(maxLocAdded, diffEntries, diffFormatter);
-            }
-
-            /* Fine release */
-            FeatureCalculatorUtils.addResultSetOfTheRelease(feature, maxLocAdded, classList, ReleaseKeeper.getInstance().getIdFromTag(release));
-        }
-
-        return feature;
-    }
-
-    public static Map<CompositeKey, Integer> calculateAverageLocAdded(Git git) throws GitAPIException, IOException {
-        LOGGER.log(Level.INFO, "Computing AVG_LOC_ADDED...");
-
-        Map<CompositeKey, Integer> feature = new LinkedHashMap<>();
-        Map<String, List<Integer>> avgLocAdded = new HashMap<>();
-        DiffFormatter diffFormatter = GitUtils.getDiffFormatter(git);
-
-        for(Tag release : ReleaseKeeper.getInstance().getReleaseKeySet()) {
-            Iterable<RevCommit> commits = FeatureCalculatorUtils.getAllCommitsOfARelease(git, ReleaseKeeper.getInstance().getIdFromTag(release));
-            List<String> classList = FeatureCalculatorUtils.getAllFileOfTheRelease(git, ReleaseKeeper.getInstance().getIdFromTag(release));
-            if(commits == null || classList == null) break;
-
-            for(RevCommit commit : commits) {
-                if(commit.getParentCount() == 0) continue;
-                RevCommit prevCommit = commit.getParent(0);
-                List<DiffEntry> diffEntries = diffFormatter.scan(prevCommit, commit);
-                FeatureCalculatorUtils.calculateAverageLocAddedUtils(avgLocAdded, diffEntries, diffFormatter);
-            }
-
-            /* qui mi trovo a fine release */
-            for (String file:classList) {
-                String className = StringUtils.getFileName(file);
-                List<Integer> avg = avgLocAdded.get(className);
-                if(avg != null) {
-                    Integer locAdded = avgLocAdded.get(className).get(0);
-                    Integer numberOfRevisions = avgLocAdded.get(className).get(1);
-                    Integer avgLocAddedPerRevision = locAdded / numberOfRevisions;
-                    CompositeKey key = new CompositeKey(ReleaseKeeper.getInstance().getIdFromTag(release), file);
-                    feature.put(key, avgLocAddedPerRevision);
-                }
-
-            }
-        }
-
-        return feature;
-    }
-
-    public static Map<CompositeKey, Integer> calculateChurn(Git git) throws GitAPIException, IOException {
-        LOGGER.log(Level.INFO, "Computing churn...");
-        Map<CompositeKey, Integer> feature = new LinkedHashMap<>();
-        Map<String, Integer> churnMap = new HashMap<>();
-        DiffFormatter diffFormatter = GitUtils.getDiffFormatter(git);
-
-        for(Tag release : ReleaseKeeper.getInstance().getReleaseKeySet()) {
-            Iterable<RevCommit> commits = FeatureCalculatorUtils.getAllCommitsOfARelease(git, ReleaseKeeper.getInstance().getIdFromTag(release));
-            List<String> classList = FeatureCalculatorUtils.getAllFileOfTheRelease(git, ReleaseKeeper.getInstance().getIdFromTag(release));
-            if(commits == null || classList == null) break;
-
-            for(RevCommit commit : commits) {
-                if(commit.getParentCount() == 0) continue;
-                RevCommit prevCommit = commit.getParent(0);
-                List<DiffEntry> diffEntries = diffFormatter.scan(prevCommit, commit);
-                FeatureCalculatorUtils.calculateChurnUtils(churnMap, diffEntries, diffFormatter);
-            }
-
-            /* Qui mi trovo a fine release */
-            FeatureCalculatorUtils.addResultSetOfTheRelease(feature, churnMap, classList, ReleaseKeeper.getInstance().getIdFromTag(release));
-        }
-
-        return feature;
-    }
-
-    public static Map<CompositeKey, Integer> calculateMaxChurn(Git git) throws GitAPIException, IOException {
-        LOGGER.log(Level.INFO, "Computing MAX_churn...");
-        Map<CompositeKey, Integer> feature = new LinkedHashMap<>();
-        Map<String, Integer> churnMap = new HashMap<>();
-        DiffFormatter diffFormatter = GitUtils.getDiffFormatter(git);
-
-        for(Tag release : ReleaseKeeper.getInstance().getReleaseKeySet()) {
-            Iterable<RevCommit> commits = FeatureCalculatorUtils.getAllCommitsOfARelease(git, ReleaseKeeper.getInstance().getIdFromTag(release));
-            List<String> classList = FeatureCalculatorUtils.getAllFileOfTheRelease(git, ReleaseKeeper.getInstance().getIdFromTag(release));
-            if(commits == null || classList == null) break;
-
-            for(RevCommit commit : commits) {
-                if(commit.getParentCount() == 0) continue;
-                RevCommit prevCommit = commit.getParent(0);
-                List<DiffEntry> diffEntries = diffFormatter.scan(prevCommit, commit);
-                FeatureCalculatorUtils.calculateMaxChurnUtils(churnMap, diffEntries, diffFormatter);
-            }
-
-            /* qui mi trovo a fine release */
-            FeatureCalculatorUtils.addResultSetOfTheRelease(feature, churnMap, classList, ReleaseKeeper.getInstance().getIdFromTag(release));
-        }
-
-        return feature;
-    }
+   
 
 }

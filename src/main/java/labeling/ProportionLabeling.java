@@ -82,7 +82,6 @@ public class ProportionLabeling {
     }
 
     public Integer computePredictedIV(Git git, Date creationTickedDate, Date fixedTickedDate) throws GitAPIException, IOException {
-        Map<Tag, Integer> releases = GitUtils.getReleaseDate(git);
         Integer fixedVersion = ProportionLabeling.getNextVersion( fixedTickedDate);
         Integer openingVersion = ProportionLabeling.getNextVersion(creationTickedDate);
         Integer p = this.getP(fixedTickedDate);
