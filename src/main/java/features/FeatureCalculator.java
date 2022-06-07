@@ -3,6 +3,7 @@ package features;
 import labeling.ReleaseKeeper;
 import labeling.Tag;
 import mydatatype.CompositeKey;
+import myexception.OutOfCaseException;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.diff.DiffEntry;
@@ -13,7 +14,6 @@ import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import utils.GitUtils;
 import utils.SourceCodeLineCounter;
-import utils.StringUtils;
 
 import java.io.*;
 import java.util.HashMap;
@@ -23,14 +23,12 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static features.Feature.LOC_TOUCHED;
-
 public class FeatureCalculator {
     private static final Logger LOGGER = Logger.getLogger(FeatureCalculator.class.getName());
 
     private FeatureCalculator() {}
 
-    public static Map<CompositeKey, Integer> computeFeature(Git git, final Feature feature) throws GitAPIException, IOException {
+    public static Map<CompositeKey, Integer> computeFeature(Git git, final Feature feature) throws GitAPIException, IOException, OutOfCaseException {
         if(feature.equals(Feature.SIZE)) {
             return FeatureCalculator.calculateSize(git);
         }
@@ -78,7 +76,7 @@ public class FeatureCalculator {
                         FeatureCalculatorUtils.calculateMaxChurnUtils(featureOverRelease, diffs, diffFormatter);
                         break;
                     default:
-                        throw new RuntimeException("Switch out of case");
+                        throw new OutOfCaseException("Switch out of case");
                 }
 
             }
@@ -98,7 +96,7 @@ public class FeatureCalculator {
                     FeatureCalculatorUtils.addResultAvgLocAdded(column, classList, avgLocAdded,release);
                     break;
                 default:
-                    throw new RuntimeException("Switch out of case");
+                    throw new OutOfCaseException("Switch out of case");
             }
         }
 
@@ -151,6 +149,6 @@ public class FeatureCalculator {
         return feature;
     }
 
-   
+
 
 }

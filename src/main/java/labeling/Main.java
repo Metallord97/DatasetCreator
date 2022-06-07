@@ -5,6 +5,7 @@ import com.opencsv.ICSVWriter;
 import features.Feature;
 import features.FeatureCalculator;
 import mydatatype.CompositeKey;
+import myexception.OutOfCaseException;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import utils.GitUtils;
@@ -43,7 +44,7 @@ public class Main {
         }
     }
 
-    public static void main (String [] args) throws GitAPIException, IOException, ParseException {
+    public static void main (String [] args) throws GitAPIException, IOException, ParseException, OutOfCaseException {
         for(Project project : Project.values()) {
             LOGGER.log(Level.INFO, "Scanning project {0}...", project.label.toUpperCase());
             Git git = Git.open(new File(project.label + "/.git"));
